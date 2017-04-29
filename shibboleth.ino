@@ -31,6 +31,24 @@
 #define NUM_LEDS 4
 #define DATA_PIN 11
 
+//game states 
+#define ENTER_STATE  0
+#define INVALID_MOVE 1
+#define VALID_MOVE   2
+#define ORIENT       3
+#define TRANSITION   4
+#define END_LEVEL    5
+#define WIN_GAME     6
+
+//game tiles
+#define WALL 0
+#define PATH 1
+#define KEY  2
+#define UP_PORTAL 3
+#define DOWN_PORTAL 4
+#define DOOR 5
+#define TRAP 6
+
 CRGB leds[NUM_LEDS];
 
 int ana0, ana1, ana2;
@@ -45,25 +63,82 @@ int breathecheck;
 #define POS6 1005
 #define POS7 1023
 
-uint8_t player_position[3] = {0,0,0}; // z,x,y
-uint8_t nav_position[3] = {0,0,0};  //z,x,y
-uint8_t levels[2][8][8] = {  {{0,0,0,0,1,0,0,0},
-                             {0,0,0,2,1,3,0,0},
-                             {0,0,0,4,1,5,0,0},
-                             {0,0,0,0,6,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0}},
-                             
-                             {{0,0,0,0,1,0,0,0},
-                             {0,0,0,2,1,3,0,0},
-                             {0,0,0,4,1,5,0,0},
-                             {0,0,0,0,6,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0},
-                             {0,0,0,0,0,0,0,0}}};////levels reference array.
+uint8_t game_state = ENTER_STATE;
+uint8_t target_position[3] = {0,0,0};  //z,x,y
+const uint8_t levels[][8] PROGMEM =   
+{  
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,3,0},
+{0,0,0,0,0,0,1,0},
+{0,0,0,0,0,0,7,0},
+
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,3,0,0},
+{0,0,0,0,0,1,0,0},
+{0,0,0,0,0,1,7,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,3,1,0,0,0},
+{0,0,0,0,1,7,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+
+{3,1,0,0,0,0,0,0},
+{0,1,0,0,0,0,0,0},
+{0,1,1,7,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+
+{7,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{1,0,0,0,0,0,0,0},
+{3,0,0,0,0,0,0,0},
+
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,1,3,0,0,0,0},
+{0,0,1,0,0,0,0,0},
+{7,1,1,1,0,0,0,0},
+
+{0,0,3,1,1,0,0,0},
+{0,0,1,0,1,0,0,0},
+{0,0,1,1,1,0,0,0},
+{0,0,0,0,1,0,0,0},
+{0,0,0,1,1,0,0,0},
+{0,0,0,7,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0},
+
+{0,0,7,1,1,0,1,1},
+{0,0,0,0,1,0,1,0},
+{0,0,0,0,1,1,0,1},
+{0,0,0,0,0,1,0,1},
+{0,0,0,0,0,1,1,1},
+{0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,3,1}                                      
+};
 
 // Timer Stuff
 int count = 0;
@@ -80,71 +155,396 @@ static const uint8_t analog_pins[] = {A2,A1,A0};
 
 void setup() {
 
+  target_position[0] = 0;
+  target_position[1] = 6;
+  target_position[2] = 7;
+//  write_target_position();
+//  player_position[0] = EEPROM.read(2);
+//  player_position[1] = EEPROM.read(3);
+//  player_position[2] = EEPROM.read(4);
+  //read dial settings
+  //read_target_position();
+ if (EEPROM.read(6) == 0x0)
+  {
+     game_state = ENTER_STATE;
+     
+  }
+
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   abortSleep = false;
   sleepTime = 250;
-  
-  // up();
-  // down();
-  // left();
-  // right();
-  // keymaster();
-  // slevel();
-  // scube();
-  // sgame();
- 
-  // breathe();
 
-  // Commented these functions out because I'm testing effects
-  /* 
-   *  read_nav_position();
-   *  display_orientation();
-   */
 
-  // Once breathe, indicate downward. Test for x7. Show portal behind you.
-  // Repeat for x6 and x5. Walls surround you except going forward.
-  // Is turning going to be done from the player perspective, or from the perspective of looking down at the puzzle (probably looking down)?
-  // Turn to F5 (arrow pointing that direction), then show blinking portal to left
-  // E5 triggers next level animation
+  Serial.setTimeout(500);
+  Serial.begin(9600);
+  delay(500);
+
 }
 
 void loop() {
-  
-  read_nav_position();
 
-  if (EEPROM.read(3)!=nav_position[1]){
-    EEPROM.write(3,nav_position[1]);
+  read_target_position();
+/*
+  Serial.println(EEPROM.read(3));
+  Serial.println(EEPROM.read(4));
+  Serial.print("Pos 1: ");
+  Serial.println(target_position[1]);
+  Serial.print("Pos 2: ");
+  Serial.println(target_position[2]);
+*/
+
+  if (EEPROM.read(3)!=target_position[1]){
+    EEPROM.write(3,target_position[1]);
     abortSleep = true;
-    Serial.println("X Changed");
+    //Serial.println("X Changed");
     previousMillis=currentMillis;
   }
   
-  if (EEPROM.read(4)!=nav_position[2]){
-    EEPROM.write(4,nav_position[2]);
+  if (EEPROM.read(4)!=target_position[2]){
+    EEPROM.write(4,target_position[2]);
     abortSleep = true;
-    Serial.println("X Changed");
+    //Serial.println("Y Changed");
     previousMillis=currentMillis;
   }
   
   if(abortSleep){
     currentMillis=millis();
-    down();
+    display_orientation();
   }
-  
-  Serial.print("SleepCycle: ");
-  Serial.println(previousMillis);
-  Serial.print("currentmillis: ");
-  Serial.println(currentMillis);
-  
+
   if(currentMillis-previousMillis>interval){
     previousMillis=currentMillis;
     abortSleep = false;
+    FastLED.clear();
   }
 
-  sleep.pwrDownMode(); //set sleep mode
-  sleep.sleepDelay(sleepTime,abortSleep); //sleep for: sleepTime
+  //sleep.pwrDownMode(); //set sleep mode
+  //sleep.sleepDelay(sleepTime,abortSleep); //sleep for: sleepTime
   
 }
+
+byte access_tile(uint8_t layer, uint8_t row, uint8_t column)
+{
+  return (uint8_t)pgm_read_byte(&levels[(layer*8)+row][column]);
+}
+
+//display_functions
+/*
+void Serial_display_bar(){
+  if (Serial){
+    Serial.print("\t\t");
+    for (uint8_t i = 0; i<49; i++) 
+      Serial.print("#");
+    Serial.println();
+  }
+  
+}
+
+void Serial_display_cell(){
+   if (Serial){
+       Serial.print("\t\t");
+       for(uint8_t i=0; i<8; i++)
+            Serial.print("#     ");
+       Serial.println("#");
+   }     
+}
+
+void Serial_populate_row(const uint8_t row_values[]){
+  if (Serial){
+    Serial.print("\t\t#");
+    for(uint8_t i=0; i<8; i++)
+    {    
+        Serial.print("  ");
+        switch ((uint8_t)pgm_read_byte(&(row_values[i]))) {
+          case 0:
+             Serial.print("#");
+             break;
+          case 1:
+             Serial.print(" ");
+             break;
+          case 2:
+             Serial.print ("K");
+             break;
+          case 3: 
+             Serial.print("P");
+             break;
+          case 4:
+             Serial.print("L");
+             break;
+          case 5: 
+             Serial.print("D");
+             break;
+          case 6: 
+             Serial.print("T");
+             break;
+          case 7:
+             Serial.print("^");
+             break;
+          default:
+             break;
+        }
+        Serial.print("  #");
+    }  
+  }
+}
+
+void Serial_show_map()
+{  
+  
+  Serial.print("\033[2J"); //VT100 clear
+  Serial.print("\033[H");  //home position
+  Serial.println("\t\t   A     B     C     D     E     F     X     Z");
+  Serial.println("\t\t   0     1     2     3     4     5     6     7");
+  for(uint8_t i=0; i<8; i++)
+  {
+     Serial_display_bar();
+     Serial_display_cell();
+     Serial_populate_row(levels[(EEPROM.read(2)*8)+i]);
+     Serial.print(" ");
+     Serial.println(i);
+     Serial_display_cell();
+     
+  }
+  Serial_display_bar();
+  
+}
+
+void Serial_display_footer()
+{
+  if (Serial){  
+    Serial.print(F("|[TL: 00:13:37] | [Layer: "));
+    Serial.print(EEPROM.read(2));
+    Serial.print(F("] | [Origin: "));
+    Serial.print(EEPROM.read(3)); // convert this to letters
+    Serial.print(" ");
+    Serial.print(EEPROM.read(4));
+    Serial.println(F("] | [Serial:Connected] |  VT100 |  9600 8N1 |"));
+  
+  }
+}
+
+uint8_t Serial_handle_prompt(){
+  if(Serial){
+   Serial.print(":" );
+    
+  }
+  while (!Serial.available()){}
+  return (uint8_t) Serial.parseInt();
+    
+}
+
+/*
+void read_target_position(){
+  char input;
+  target_position[0] = EEPROM.read(2);
+  if(Serial){
+    Serial.print("ROW");
+    target_position[1] = Serial_handle_prompt();
+    Serial.print(target_position[1]);
+    Serial.print("COL");  
+    target_position[2] = Serial_handle_prompt();
+    Serial.println(target_position[2]);    
+  }
+}
+
+
+void write_target_position()
+{
+   EEPROM.write(2,target_position[0]);
+   EEPROM.write(3,target_position[1]);
+   EEPROM.write(4,target_position[2]);
+
+}
+
+
+
+void display_feedback() // needs funcitons from Jay, consdier merging with evaluate_position()
+{
+  if(Serial)
+  {
+     Serial.print(F("LIGHTS: "));
+  
+    switch (game_state)
+    {
+       case ENTER_STATE: 
+          Serial.print(F("ENTER_STATE "));
+              //enter_animation();
+ 
+       break;
+       
+       case VALID_MOVE:   
+            Serial.print(F("VALID_MOVE "));
+          // valid_animation();
+       break;
+       
+       case ORIENT:       
+             Serial.print(F("ORIENTATION "));
+         // orientation_display();
+       break;
+       
+       case TRANSITION:   
+             Serial.print(F("TRANSITION "));
+          // transition_animation();
+       break;
+       
+       case END_LEVEL:
+           Serial.print(F("END_LEVEL "));   
+          //level_animation();
+       break;
+       
+       case WIN_GAME:
+           Serial.print(F("WIN!! "));
+          //complete_animation();
+       break;
+       
+       case INVALID_MOVE:
+       default:   
+           Serial.print(F("INVALID "));
+          //invalid_animation();
+       break;
+      
+    }
+  }
+}
+
+void evaluate_position(){ //only chage state here, only print if you are in a code spot we expect not to reach
+ target_position[0] = EEPROM.read(2);
+ target_position[1] = EEPROM.read(3);
+ target_position[2] = EEPROM.read(4);
+ if (EEPROM.read(6) != 0) // High byte means we have not found 0x8 yet
+  {
+     if ((target_position[0] == 0) && (target_position[1] == 7) && (target_position[2] == 6)) // when dials are at 0X8 enter the game 
+     {
+        game_state = ENTER_STATE;
+        write_target_position(); //save our position
+        EEPROM.write(6,0x0);  // clear enterstate bit we'll no longer branch here
+  
+     }
+     else
+     {
+         game_state = INVALID_MOVE;
+     }
+  
+  }
+  else // we're in the cube EEPROM[6]==0
+  {    
+       if ( ( ((target_position[0] != target_position[0])) || //always stay on the same layer , how do we advance portal?
+                    ((target_position[1] != target_position[1]) || (target_position[2] != target_position[2]))) && // no diagonal movements 
+                    ((target_position[1] > (target_position[1] + 1)) || (target_position[1] < (target_position[1]-1)) ) || //no move is ever non-adjacent
+                    ((target_position[2] > (target_position[2] + 1)) || (target_position[2] < (target_position[2]-1)) ) 
+                   )  
+       {
+          game_state = INVALID_MOVE;
+          return;
+       } 
+
+       //evaluate the tile we want to get to and set the state accordingly
+       switch(access_tile(target_position[0],target_position[1],target_position[2])){
+
+        case PATH:
+            game_state = ORIENT;
+        break;
+        case KEY:
+            EEPROM.write(7,0x0); // clear the key byte indicating we have a key
+            game_state = ORIENT;
+        break;
+        case UP_PORTAL:
+            if ((target_position[0]+1) == 8)
+            {
+               Serial.println(F("LEVEL DESIGN ERROR"));
+               game_state = INVALID_MOVE;
+            }
+            game_state = TRANSITION;
+        break;
+        case DOWN_PORTAL:
+            if (!target_position[0])
+            {
+               Serial.println(F("LEVEL DESIGN ERROR"));
+               game_state = INVALID_MOVE;
+            }
+            game_state = TRANSITION;
+        break;
+        case DOOR:
+            if(EEPROM.read(7) == 0) {// we have a key
+                 game_state = ORIENT;
+                 EEPROM.write(7,0xFF); //set the key byte as it is used
+            }
+            else
+            {
+                 game_state = INVALID_MOVE;
+                 Serial.print(F("NEED A KEY"));
+            }
+        break;        
+        case TRAP:
+                 game_state = ORIENT;
+            // is trap to a begining layer layer or level?
+        case  WALL:
+        default:
+            game_state = INVALID_MOVE;
+        break;
+       }
+      if(game_state != INVALID_MOVE)
+      {
+          target_position[0] = target_position[0];
+          target_position[1] = target_position[1];
+          target_position[2] = target_position[2];
+      }
+  }
+}
+
+void update_map(){ // this is the logic to update the position of the player on the map and handle keys
+ Serial.print(F("GAME STATE: "));
+  switch (game_state)
+  {
+      case INVALID_MOVE:
+        Serial.print(F("INVALID MOVE "));
+        break;
+      case ORIENT:
+        Serial.print(F("VALID - ORIENT "));
+        write_target_position(); // save new spot to EEPROM
+        break;
+      case TRANSITION:
+        Serial.print(F("VALID - TRANSITION "));
+         if(access_tile(target_position[0],target_position[1],target_position[2]) == UP_PORTAL)
+         {
+            Serial.print(F("FORWARD "));
+            target_position[0]++;
+            write_target_position(); 
+   //         Serial_show_map();
+         }
+         else if (access_tile(target_position[0],target_position[1],target_position[2]) == DOWN_PORTAL)
+         {
+            Serial.print(F("BACKWARD "));
+            if(!target_position[0]) {
+              Serial.print(F("LEVEL DESIGN ERROR DOWN PORTAL IN FIRST LAYER"));
+              break;
+            }
+            target_position[0]--;
+            write_target_position(); 
+//            Serial_show_map();
+         }
+         else
+         {
+            Serial.print(F("LOGIC ERROR - TILE "));
+         }
+         break;
+        case ENTER_STATE:
+           game_state = ORIENT;
+        break;
+        default:
+           Serial.print(F("LOGIC ERROR - STATE "));
+        break;
+         
+  }
+  Serial.print(F("New Player Position L["));
+  Serial.print(EEPROM.read(2));
+  Serial.print(F("] X["));
+  Serial.print(EEPROM.read(3));
+  Serial.print(F("] Y["));
+  Serial.print(EEPROM.read(4));
+  Serial.println(F("]"));
+}
+*/
 
 // Turn all lights off
 void turnoff(){
@@ -386,41 +786,37 @@ void breathe(){
 
 // Colors lights based on what surrounds the player position
 void display_orientation(){
-  FastLED.setBrightness(8);
+  FastLED.setBrightness(70);
 
   int z_pos,x_pos,y_pos;
   int above, below, left, right;
 
-  for(int i=0;i<3;i++){
-    player_position[i]=nav_position[i];
-  }
-
-  z_pos = player_position[0];
-  x_pos = player_position[1];
-  y_pos = player_position[2];
+  z_pos = target_position[0];
+  x_pos = target_position[1];
+  y_pos = target_position[2];
 
   if(y_pos==7){
     below = 0;
   } else {
-    below = levels[z_pos][y_pos+1][x_pos];
+    below = access_tile(z_pos,(y_pos+1),x_pos);
   }
   
   if(y_pos==0) {
     above = 0;
   } else {
-    above = levels[z_pos][y_pos-1][x_pos];
+    above = access_tile(z_pos,(y_pos-1),x_pos);
   }
 
   if(x_pos==0){
     left = 0;
   } else {
-    left = levels[z_pos][y_pos][x_pos-1];
+    left = access_tile(z_pos,y_pos,(x_pos-1));
   }
   
   if(x_pos==7) {
     right = 0;
   } else {
-    right = levels[z_pos][y_pos][x_pos+1];
+    right = access_tile(z_pos,y_pos,(x_pos+1));
   }
 
   int surroundings[] = {below, right, left, above};
@@ -431,6 +827,22 @@ void display_orientation(){
     Serial.println(surroundings[i]);
     delay(1000);
   }*/
+
+  Serial.print("Z: ");
+  Serial.println(z_pos);
+  Serial.print("X: ");
+  Serial.println(x_pos);
+  Serial.print("Y: ");
+  Serial.println(y_pos);
+  Serial.print("below: ");
+  Serial.println(below);
+  Serial.print("above: ");
+  Serial.println(above);
+  Serial.print("left: ");
+  Serial.println(left);
+  Serial.print("right: ");
+  Serial.println(right);
+  
   
   /*
    * 0=Wall
@@ -464,8 +876,6 @@ void display_orientation(){
       case 3:
         leds[i] = CRGB::Purple;
         FastLED.show();
-        delay(2000);
-        FastLED.clear();
         break;
       case 4:
         for(int i=0;i<3;i++){
@@ -496,34 +906,34 @@ void display_orientation(){
   FastLED.show();
 }
 
-void read_nav_position(){
+void read_target_position(){
   int reading = 0;
   for (uint8_t i=0; i<3; i++)
   {
     reading = analogRead(analog_pins[i]);
     if (reading < POS0){
-      nav_position[i] = 7;
+      target_position[i] = 7;
     }
     else if (reading < POS1 && reading >= POS0){
-      nav_position[i] = 6;
+      target_position[i] = 6;
     }
     else if (reading < POS2 && reading >= POS1){
-      nav_position[i] = 5;
+      target_position[i] = 5;
     }
     else if (reading < POS3 && reading >= POS2){
-      nav_position[i] = 4;
+      target_position[i] = 4;
     }
     else if (reading < POS4 && reading >= POS3){
-      nav_position[i] = 3;
+      target_position[i] = 3;
     }
     else if (reading < POS5 && reading >= POS4){
-      nav_position[i] = 2;
+      target_position[i] = 2;
     }
     else if (reading < POS6 && reading >= POS5){
-      nav_position[i] = 1;
+      target_position[i] = 1;
     }
     else if (reading < POS7 && reading >= POS6){
-      nav_position[i] = 0;
+      target_position[i] = 0;
     }
     
   }
