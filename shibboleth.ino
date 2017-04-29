@@ -40,6 +40,14 @@
 #define END_LEVEL    5
 #define WIN_GAME     6
 
+// EEprom Shit
+#define PIXEL_TEST   0
+#define LEVEL_BYTE   1
+#define LAYER_BYTE   2
+#define X_BYTE       3
+#define Y_BYTE       4
+#define HAS_KEY      5
+
 //game tiles
 #define WALL 0
 #define PATH 1
@@ -155,24 +163,32 @@ static const uint8_t analog_pins[] = {A2,A1,A0};
 
 void setup() {
 
-  target_position[0] = 0;
-  target_position[1] = 6;
-  target_position[2] = 7;
 //  write_target_position();
 //  player_position[0] = EEPROM.read(2);
 //  player_position[1] = EEPROM.read(3);
 //  player_position[2] = EEPROM.read(4);
   //read dial settings
   //read_target_position();
- if (EEPROM.read(6) == 0x0)
-  {
-     game_state = ENTER_STATE;
-     
+
+  up();
+  down();
+  left();
+  right();
+  delay(100);
+  
+  // For testing purposes, we will set PIXEL_TEST to 1 every time we init to ensure that we can switch it to 2
+  EEPROM.write(PIXEL_TEST,1);
+  
+  if(EEPROM.read(PIXEL_TEST) == 1){
+    read_target_position();
+    breathe();
+  } else if(EEPROM.read(PIXEL_TEST) == 2) {
+    Serial.println("SUCCESS!");
   }
 
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   abortSleep = false;
-  sleepTime = 250;
+  sleepTime = 1000;
 
 
   Serial.setTimeout(500);
@@ -184,6 +200,8 @@ void setup() {
 void loop() {
 
   read_target_position();
+  // Serial.println(EEPROM.read(PIXEL_TEST));
+  
 /*
   Serial.println(EEPROM.read(3));
   Serial.println(EEPROM.read(4));
@@ -193,25 +211,41 @@ void loop() {
   Serial.println(target_position[2]);
 */
 
-  if (EEPROM.read(3)!=target_position[1]){
-    EEPROM.write(3,target_position[1]);
+  // Next three if conditionals are watching to see if anything changes on X, Y, and Z potentiometers
+  if (EEPROM.read(LAYER_BYTE)!=target_position[0]){
+    EEPROM.write(LAYER_BYTE,target_position[0]);
     abortSleep = true;
-    //Serial.println("X Changed");
+    // Serial.println("Z Changed");
     previousMillis=currentMillis;
-  }
-  
-  if (EEPROM.read(4)!=target_position[2]){
-    EEPROM.write(4,target_position[2]);
-    abortSleep = true;
-    //Serial.println("Y Changed");
-    previousMillis=currentMillis;
-  }
-  
-  if(abortSleep){
-    currentMillis=millis();
-    display_orientation();
   }
 
+  if (EEPROM.read(X_BYTE)!=target_position[1]){
+    EEPROM.write(X_BYTE,target_position[1]);
+    abortSleep = true;
+    // Serial.println("X Changed");
+    previousMillis=currentMillis;
+  }
+  
+  if (EEPROM.read(Y_BYTE)!=target_position[2]){
+    EEPROM.write(Y_BYTE,target_position[2]);
+    abortSleep = true;
+    // Serial.println("Y Changed");
+    previousMillis=currentMillis;
+  }
+
+  // This is where the code runs when we are awake
+  if(abortSleep){
+    if(EEPROM.read(PIXEL_TEST) == 1){
+      read_target_position();
+      breathe();
+    } else if(EEPROM.read(PIXEL_TEST) == 2){
+      Serial.println("SUCCESS!");
+      currentMillis=millis();
+      display_orientation();
+    }
+  }
+
+  // If timer goes above the interval, go to sleep
   if(currentMillis-previousMillis>interval){
     previousMillis=currentMillis;
     abortSleep = false;
@@ -229,7 +263,7 @@ byte access_tile(uint8_t layer, uint8_t row, uint8_t column)
 }
 
 //display_functions
-/*
+
 void Serial_display_bar(){
   if (Serial){
     Serial.print("\t\t");
@@ -299,7 +333,7 @@ void Serial_show_map()
   {
      Serial_display_bar();
      Serial_display_cell();
-     Serial_populate_row(levels[(EEPROM.read(2)*8)+i]);
+     Serial_populate_row(levels[(EEPROM.read(LAYER_BYTE)*8)+i]);
      Serial.print(" ");
      Serial.println(i);
      Serial_display_cell();
@@ -313,11 +347,11 @@ void Serial_display_footer()
 {
   if (Serial){  
     Serial.print(F("|[TL: 00:13:37] | [Layer: "));
-    Serial.print(EEPROM.read(2));
+    Serial.print(EEPROM.read(LAYER_BYTE));
     Serial.print(F("] | [Origin: "));
-    Serial.print(EEPROM.read(3)); // convert this to letters
+    Serial.print(EEPROM.read(X_BYTE)); // convert this to letters
     Serial.print(" ");
-    Serial.print(EEPROM.read(4));
+    Serial.print(EEPROM.read(Y_BYTE));
     Serial.println(F("] | [Serial:Connected] |  VT100 |  9600 8N1 |"));
   
   }
@@ -346,13 +380,13 @@ void read_target_position(){
     Serial.println(target_position[2]);    
   }
 }
-
+*/
 
 void write_target_position()
 {
-   EEPROM.write(2,target_position[0]);
-   EEPROM.write(3,target_position[1]);
-   EEPROM.write(4,target_position[2]);
+   EEPROM.write(LAYER_BYTE,target_position[0]);
+   EEPROM.write(X_BYTE,target_position[1]);
+   EEPROM.write(Y_BYTE,target_position[2]);
 
 }
 
@@ -408,16 +442,16 @@ void display_feedback() // needs funcitons from Jay, consdier merging with evalu
 }
 
 void evaluate_position(){ //only chage state here, only print if you are in a code spot we expect not to reach
- target_position[0] = EEPROM.read(2);
- target_position[1] = EEPROM.read(3);
- target_position[2] = EEPROM.read(4);
- if (EEPROM.read(6) != 0) // High byte means we have not found 0x8 yet
+ target_position[0] = EEPROM.read(LAYER_BYTE);
+ target_position[1] = EEPROM.read(X_BYTE);
+ target_position[2] = EEPROM.read(Y_BYTE);
+ if (EEPROM.read(PIXEL_TEST) != 0) // High byte means we have not found 0x8 yet
   {
      if ((target_position[0] == 0) && (target_position[1] == 7) && (target_position[2] == 6)) // when dials are at 0X8 enter the game 
      {
         game_state = ENTER_STATE;
         write_target_position(); //save our position
-        EEPROM.write(6,0x0);  // clear enterstate bit we'll no longer branch here
+        EEPROM.write(PIXEL_TEST,0x0);  // clear enterstate bit we'll no longer branch here
   
      }
      else
@@ -445,7 +479,7 @@ void evaluate_position(){ //only chage state here, only print if you are in a co
             game_state = ORIENT;
         break;
         case KEY:
-            EEPROM.write(7,0x0); // clear the key byte indicating we have a key
+            EEPROM.write(HAS_KEY,0x0); // clear the key byte indicating we have a key
             game_state = ORIENT;
         break;
         case UP_PORTAL:
@@ -465,9 +499,9 @@ void evaluate_position(){ //only chage state here, only print if you are in a co
             game_state = TRANSITION;
         break;
         case DOOR:
-            if(EEPROM.read(7) == 0) {// we have a key
+            if(EEPROM.read(HAS_KEY) == 0) {// we have a key
                  game_state = ORIENT;
-                 EEPROM.write(7,0xFF); //set the key byte as it is used
+                 EEPROM.write(HAS_KEY,0xFF); //set the key byte as it is used
             }
             else
             {
@@ -537,14 +571,14 @@ void update_map(){ // this is the logic to update the position of the player on 
          
   }
   Serial.print(F("New Player Position L["));
-  Serial.print(EEPROM.read(2));
+  Serial.print(EEPROM.read(LAYER_BYTE));
   Serial.print(F("] X["));
-  Serial.print(EEPROM.read(3));
+  Serial.print(EEPROM.read(X_BYTE));
   Serial.print(F("] Y["));
-  Serial.print(EEPROM.read(4));
+  Serial.print(EEPROM.read(Y_BYTE));
   Serial.println(F("]"));
 }
-*/
+
 
 // Turn all lights off
 void turnoff(){
@@ -723,16 +757,14 @@ void sgame(){
 
 // Checks when the badge is first turned on to see if the player has set the pot to 0, x, and 8. If not, red flashy. If so, blue pulsey.
 void breathe(){
-  ana0 = analogRead(A0);
-  ana1 = analogRead(A1);
-  ana2 = analogRead(A2);
-  
-  breathecheck=EEPROM.read(6);
+  if(target_position[0]==0 && target_position[1]==6 && target_position[2]==7){
+    EEPROM.write(PIXEL_TEST,2);
+  }
 
-  // If you haven't yet passed the initial 0x8 test....
-  if(breathecheck!=1){
+  // If you have passed the test, breathe
+  if (EEPROM.read(PIXEL_TEST)==2){
     if(ana2>895 && ana1>128 && ana1<400 && ana0<128){
-      EEPROM.write(6, 1);
+      EEPROM.write(PIXEL_TEST, 1);
       for(int dot=0; dot<NUM_LEDS;dot++){
        leds[dot] = CRGB::Blue;
       }
@@ -757,7 +789,7 @@ void breathe(){
         FastLED.show();
         delay(5);
       }
-    } else {
+    } else { // If you haven't yet passed the initial 0x8 test, red flashes
       for(int dot=0; dot<NUM_LEDS;dot++){
         leds[dot] = CRGB::Red;
         FastLED.show();
@@ -779,9 +811,10 @@ void breathe(){
       }
       delay(3000);
     }
-  }
+  
   FastLED.clear();
   FastLED.show();
+  }
 }
 
 // Colors lights based on what surrounds the player position
@@ -851,7 +884,8 @@ void display_orientation(){
    * 3=Portal
    * 4=Locked Portal
    * 5=Door
-   * 6=Trap
+   * 6=Down Portal
+   * 7=Entry Portal
   */
   for(int i=0;i<4;i++){
     switch(surroundings[i]){
