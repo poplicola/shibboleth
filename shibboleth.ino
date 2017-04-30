@@ -120,7 +120,7 @@ extern const uint8_t levels[][8];
 
 byte access_tile(uint8_t layer, uint8_t row, uint8_t column)
 {
-  return (uint8_t)pgm_read_byte(&levels[(layer*8)+row][column]);
+  return (uint8_t)pgm_read_byte(&levels[(layer*8)+column][row]);
 }
 
 
@@ -135,28 +135,28 @@ void read_target_position()
   {
     reading = analogRead(analog_pins[i]);
     if (reading < POS0){
-      target_position[i] = 0;
+      target_position[i] = 7;
     }
     else if (reading < POS1 && reading >= POS0){
-      target_position[i] = 1;
-    }
-    else if (reading < POS2 && reading >= POS1){
-      target_position[i] = 2;
-    }
-    else if (reading < POS3 && reading >= POS2){
-      target_position[i] = 3;
-    }
-    else if (reading < POS4 && reading >= POS3){
-      target_position[i] = 4;
-    }
-    else if (reading < POS5 && reading >= POS4){
-      target_position[i] = 5;
-    }
-    else if (reading < POS6 && reading >= POS5){
       target_position[i] = 6;
     }
+    else if (reading < POS2 && reading >= POS1){
+      target_position[i] = 5;
+    }
+    else if (reading < POS3 && reading >= POS2){
+      target_position[i] = 4;
+    }
+    else if (reading < POS4 && reading >= POS3){
+      target_position[i] = 3;
+    }
+    else if (reading < POS5 && reading >= POS4){
+      target_position[i] = 2;
+    }
+    else if (reading < POS6 && reading >= POS5){
+      target_position[i] = 1;
+    }
     else if (reading < POS7 && reading >= POS6){
-      target_position[i] = 7;
+      target_position[i] = 0;
     }
   }
 }
@@ -229,6 +229,7 @@ void evaluate_position()
     else
     {
       game_state = INVALID_MOVE;
+      Serial.println("Problem9");
     }
     display_feedback();
   }
@@ -251,6 +252,7 @@ void evaluate_position()
             ((target_position[2] > (player_position[2] + 1)) || (target_position[2] < (player_position[2] - 1))))
         {
           game_state = INVALID_MOVE;
+          Serial.println("Problem1");
           break;
         }
 
@@ -259,6 +261,7 @@ void evaluate_position()
             ((target_position[1] != player_position[1]) || (target_position[2] != player_position[2])))
         {
           game_state = INVALID_MOVE;
+          Serial.println("Problem2");
           break;
         }
 
@@ -267,6 +270,7 @@ void evaluate_position()
             ((target_position[0] != player_position[0]) || (target_position[2] != player_position[2])))
         {
           game_state = INVALID_MOVE;
+          Serial.println("Problem3");
           break;
         }
 
@@ -275,6 +279,7 @@ void evaluate_position()
             ((target_position[0] != player_position[0]) || (target_position[1] != player_position[1])))
         {
           game_state = INVALID_MOVE;
+          Serial.println("Problem4");
           break;
         }
 
@@ -283,18 +288,20 @@ void evaluate_position()
             ((target_position[0] > 63) || (target_position[0] < 0)))
         {
           game_state = INVALID_MOVE;
+          Serial.println("Problem5");
           break;
         }
 
         switch (access_tile(target_position[0],target_position[1],target_position[2]))
         // should only get here if we're "in range"
         {
-          case PATH:
+          case 1:
+          case 7:
             game_state = VALID_MOVE;
             make_valid_move();
             game_state = ORIENT;
             break;
-          case DOOR:
+          case 5:
             if (EEPROM.read(7)){  // we have a key
               game_state = VALID_MOVE;
               make_valid_move();
@@ -305,15 +312,16 @@ void evaluate_position()
             else
             {
               game_state = INVALID_MOVE;
+              Serial.println("Problem6");
               break;
             }
-          case KEY:
+          case 2:
             EEPROM.write(7,0x1); // set the flag that we have a key
             game_state = VALID_MOVE;
             make_valid_move();
             game_state = ORIENT;
             break;
-          case UP_PORTAL:
+          case 3:
             if (access_tile(target_position[0],target_position[1],target_position[2])==DOWN_PORTAL) {
             } else {
             }
@@ -323,7 +331,7 @@ void evaluate_position()
             make_valid_move();
             game_state = TRANSITION;
             break;
-          case DOWN_PORTAL:
+          case 4:
 //            player_position[0]--;
 //            write_target_position();
 //            display_feedback();
@@ -336,15 +344,22 @@ void evaluate_position()
 //            display_feedback();
 //            game_state = TRANSITION;
 //            break;
-          case WALL:
+          case 0:
           default:
             game_state = INVALID_MOVE;
+            Serial.println("Problem7");
+            Serial.println(access_tile(target_position[0],target_position[1],target_position[2]));
             break; 
         }
         break;
+      case TRANSITION:
+        display_feedback();
+        game_state = ORIENT;
       case INVALID_MOVE:
       default:
         display_feedback();
+        Serial.println("Problem8");
+        Serial.println(access_tile(target_position[0],target_position[1],target_position[2]));
         // may implement par counting here
         break;
     }
@@ -604,32 +619,32 @@ void display_orientation(){
   int z_pos,x_pos,y_pos;
   int above, below, left, right;
 
-  z_pos = target_position[0];
-  x_pos = target_position[1];
-  y_pos = target_position[2];
+  z_pos = player_position[0];
+  x_pos = player_position[1];
+  y_pos = player_position[2];
 
   if(y_pos==7){
     below = 0;
   } else {
-    below = access_tile(z_pos,(y_pos+1),x_pos);
+    below = access_tile(z_pos,x_pos,(y_pos+1));
   }
 
   if(y_pos==0) {
     above = 0;
   } else {
-    above = access_tile(z_pos,(y_pos-1),x_pos);
+    above = access_tile(z_pos,x_pos,(y_pos-1));
   }
 
   if(x_pos==0){
     left = 0;
   } else {
-    left = access_tile(z_pos,y_pos,(x_pos-1));
+    left = access_tile(z_pos,(x_pos-1),y_pos);
   }
 
   if(x_pos==7) {
     right = 0;
   } else {
-    right = access_tile(z_pos,y_pos,(x_pos+1));
+    right = access_tile(z_pos,(x_pos+1),y_pos);
   }
 
   int surroundings[] = {below, right, left, above};
@@ -667,6 +682,8 @@ void display_orientation(){
       case 3:
         leds[i] = CRGB::Purple;
         FastLED.show();
+        delay(2000);
+        FastLED.clear();
         break;
       case 4:
         for(int i=0;i<3;i++){
@@ -1023,43 +1040,56 @@ void loop()
 {
 
   read_target_position();
-  
-// Next three if conditionals are watching to see if anything changes on X, Y, and Z potentiometers
-  if (EEPROM.read(LAYER_BYTE) != target_position[0]){
-    abortSleep = true;
-    // Serial.println("Z Changed");
-    previousMillis = currentMillis;
-  }
+    Serial.print("TZ: ");
+    Serial.println(target_position[0]);
+    Serial.print("TX: ");
+    Serial.println(target_position[1]);
+    Serial.print("TY: ");
+    Serial.println(target_position[2]);
+    evaluate_position();
 
-  if (EEPROM.read(X_BYTE) != target_position[1]){
-    abortSleep = true;
-    // Serial.println("X Changed");
-    previousMillis = currentMillis;
-  }
-
-  if (EEPROM.read(Y_BYTE)!=target_position[2]){
-    abortSleep = true;
-    // Serial.println("Y Changed");
-    previousMillis = currentMillis;
-  }
-
-  if(abortSleep){
-    currentMillis = millis();
+  if(Serial){
     
+    
+    Serial_menu_handler();
+  } else {
+    read_target_position();
+    // Next three if conditionals are watching to see if anything changes on X, Y, and Z potentiometers
+    if (EEPROM.read(LAYER_BYTE) != target_position[0]){
+      abortSleep = true;
+      // Serial.println("Z Changed");
+      previousMillis = currentMillis;
+    }
+  
+    if (EEPROM.read(X_BYTE) != target_position[1]){
+      abortSleep = true;
+      // Serial.println("X Changed");
+      previousMillis = currentMillis;
+    }
+  
+    if (EEPROM.read(Y_BYTE)!=target_position[2]){
+      abortSleep = true;
+      // Serial.println("Y Changed");
+      previousMillis = currentMillis;
+    }
+  
+    if(abortSleep){
+      currentMillis = millis();
+    }
+
+    if(currentMillis - previousMillis > interval){
+      previousMillis = currentMillis;
+      abortSleep = false;
+      FastLED.clear();
+    }
+
+    evaluate_position();
+
+    sleep.pwrDownMode(); //set sleep mode
+    sleep.sleepDelay(sleepTime,abortSleep); //sleep for: sleepTime
+    Serial_menu_handler();
   }
-
-  evaluate_position();
-
-  if(currentMillis - previousMillis > interval){
-    previousMillis = currentMillis;
-    abortSleep = false;
-    FastLED.clear();
-  }
-
-  //sleep.pwrDownMode(); //set sleep mode
-  //sleep.sleepDelay(sleepTime,abortSleep); //sleep for: sleepTime
-
-  Serial_menu_handler();
+  
   //   Serial.println("OUT OF HANDLER"); // for debug
  
 } // loop()
