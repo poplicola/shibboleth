@@ -101,7 +101,7 @@ Sleep sleep;
 boolean abortSleep;
 unsigned long sleepTime;
 long previousMillis = 0;
-long interval = 10000;
+long interval = 30000;
 long currentMillis;
 
 uint8_t screen_state = SCREEN_MAIN;
@@ -384,33 +384,30 @@ void turnoff(){
 
 // Tip for going up
 void up(){
-  FastLED.setBrightness(8);
   for(int dot = 0; dot < NUM_LEDS; dot++) {
     leds[dot] = CRGB::White;
     FastLED.show();
     // clear this led for the next time around the loop
     leds[dot] = CRGB::Black;
-    delay(300);
+//    delay(300);
   }
   FastLED.show();
 }
 
 // Tip for going down
 void down(){
-  FastLED.setBrightness(8);
   for(int dot = 4; dot >= 0; dot--) {
     leds[dot] = CRGB::White;
     FastLED.show();
     // clear this led for the next time around the loop
     leds[dot] = CRGB::Black;
-    delay(300);
+//    delay(300);
   }
   FastLED.show();
 }
 
 // Tip for going left
 void left(){
-  FastLED.setBrightness(8);
   for(int i=0;i<2;i++){
     leds[3] = CRGB::White;
     leds[1] = CRGB::White;
@@ -427,7 +424,6 @@ void left(){
 
 // Tip for going right
 void right(){
-  FastLED.setBrightness(8);
   for(int i=0;i<2;i++){
     leds[2] = CRGB::White;
     leds[0] = CRGB::White;
@@ -444,7 +440,6 @@ void right(){
 
 // Got dat key
 void keymaster(){
-  FastLED.setBrightness(8);
   for(int i=0; i<4; i++){
     leds[i] = CRGB::Orange;
     FastLED.show();
@@ -456,23 +451,22 @@ void keymaster(){
 
 // Success Level
 void transition_animation(){
-  FastLED.setBrightness(70);
 
   for(int i=0;i<61;i++){
     int pos = random16(NUM_LEDS);
     leds[pos] = CHSV(i*4,i*4,i*4);
     FastLED.show();
-    delay(70);
+//    delay(70);
   }
   leds[2] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[0] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[1] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[3] = CRGB::Black;
   FastLED.show();
 
@@ -482,40 +476,39 @@ void transition_animation(){
 
 // Succes Cube
 void level_animation(){
-  FastLED.setBrightness(70);
 
   for(int i=0;i<122;i++){
     int pos = random16(NUM_LEDS);
     leds[pos] = CHSV(i*2,i*2,i*2);
     FastLED.show();
-    delay(70);
+//    delay(70);
   }
 
   for(int dot=0; dot<NUM_LEDS;dot++){
     leds[dot] = CRGB::Blue;
     FastLED.show();
   }
-  delay(1500);
+//  delay(1500);
   for(int dot=0; dot<NUM_LEDS;dot++){
     leds[dot] = CRGB::Black;
     FastLED.show();
   }
-  delay(1500);
+//  delay(1500);
   for(int dot=0; dot<NUM_LEDS;dot++){
     leds[dot] = CRGB::Blue;
     FastLED.show();
   }
-  delay(1500);
+//  delay(1500);
 
   leds[2] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[0] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[1] = CRGB::Black;
   FastLED.show();
-  delay(150);
+//  delay(150);
   leds[3] = CRGB::Black;
   FastLED.show();
 
@@ -525,7 +518,6 @@ void level_animation(){
 
 // Success Game
 void complete_animation(){
-  FastLED.setBrightness(70);
 
   for(int finish=0;finish<4;finish++){
     for(int i=0;i<1000;i++){
@@ -539,7 +531,7 @@ void complete_animation(){
           FastLED.show();
         }
       }
-      delay(100);
+//      delay(100);
     }
   }
 
@@ -556,22 +548,10 @@ void enter_animation(){
   for(int i=0;i<255;i++){
     FastLED.setBrightness(i);
     FastLED.show();
-    delay(5);
   }
   for(int i=255;i>0;i--){
     FastLED.setBrightness(i);
     FastLED.show();
-    delay(5);
-  }
-  for(int i=0;i<255;i++){
-    FastLED.setBrightness(i);
-    FastLED.show();
-    delay(5);
-  }
-  for(int i=255;i>0;i--){
-    FastLED.setBrightness(i);
-    FastLED.show();
-    delay(5);
   }
 
   FastLED.clear();
@@ -583,29 +563,10 @@ void invalid_animation(){
     leds[dot] = CRGB::Red;
     FastLED.show();
   }
-  delay(3000);
-  for(int dot=0; dot<NUM_LEDS;dot++){
-    leds[dot] = CRGB::Black;
-    FastLED.show();
-  }
-  delay(1000);
-  for(int dot=0; dot<NUM_LEDS;dot++){
-    leds[dot] = CRGB::Red;
-    FastLED.show();
-  }
-  delay(3000);
-  for(int dot=0; dot<NUM_LEDS;dot++){
-    leds[dot] = CRGB::Black;
-    FastLED.show();
-  }
-  delay(3000);
-  FastLED.clear();
-  FastLED.show();
 }
 
 // Colors lights based on what surrounds the player position
 void display_orientation(){
-  FastLED.setBrightness(70);
 
   int z_pos,x_pos,y_pos;
   int above, below, left, right;
@@ -701,8 +662,6 @@ void display_orientation(){
         break;
     }
   }
-  FastLED.clear();
-  FastLED.show();
 }
 
 //=========================
@@ -980,18 +939,14 @@ void setup() {
   LEDS.addLeds<WS2812B,LED_PIN,GRB>(leds,NUM_LEDS);
   LEDS.setBrightness(BRIGHTNESS);
 
-  up();
-  down();
-  delay(100);
-
   // For testing
-  EEPROM.write(LAYER_BYTE,0);
-  EEPROM.write(X_BYTE,6);
-  EEPROM.write(Y_BYTE,7);
-  EEPROM.write(HAS_KEY,0x0);
+//  EEPROM.write(LAYER_BYTE,0);
+//  EEPROM.write(X_BYTE,6);
+//  EEPROM.write(Y_BYTE,7);
+//  EEPROM.write(HAS_KEY,0x0);
 
   // For testing purposes, we will set PIXEL_TEST to 1 every time we init to ensure that we can switch it to 2
-  EEPROM.write(PIXEL_TEST, 1);
+//  EEPROM.write(PIXEL_TEST, 1);
 
   abortSleep = false;
   sleepTime = 1000;
@@ -1030,36 +985,36 @@ void setup() {
 void loop()
 {
   if(Serial){
+    LEDS.setBrightness(70);
     read_target_position();
     evaluate_position();
     Serial_menu_handler();
   } else {
     read_target_position();
-    evaluate_position();
-    abortSleep = true;
-    /*
-    // Next three if conditionals are watching to see if anything changes on X, Y, and Z potentiometers
-    if (EEPROM.read(LAYER_BYTE) != target_position[0]){
+    
+    if (EEPROM.read(10) != target_position[0]){ 
+      EEPROM.write(10,target_position[0]);
       abortSleep = true;
-      // Serial.println("Z Changed");
       previousMillis = currentMillis;
     }
   
-    if (EEPROM.read(X_BYTE) != target_position[1]){
+    if (EEPROM.read(11) != target_position[1]){
+      EEPROM.write(11,target_position[1]);
       abortSleep = true;
-      // Serial.println("X Changed");
       previousMillis = currentMillis;
     }
   
-    if (EEPROM.read(Y_BYTE)!=target_position[2]){
+    if (EEPROM.read(12)!=target_position[2]){
+      EEPROM.write(12,target_position[2]);
       abortSleep = true;
-      // Serial.println("Y Changed");
       previousMillis = currentMillis;
     }
-    */
   
     if(abortSleep){
+      LEDS.setBrightness(BRIGHTNESS);
       currentMillis = millis();
+      read_target_position();
+      evaluate_position();
     }
 
     if(currentMillis - previousMillis > interval){
@@ -1071,7 +1026,6 @@ void loop()
 
     sleep.pwrDownMode(); //set sleep mode
     sleep.sleepDelay(sleepTime,abortSleep); //sleep for: sleepTime
-    Serial_menu_handler();
   }
 
   //   Serial.println("OUT OF HANDLER"); // for debug
